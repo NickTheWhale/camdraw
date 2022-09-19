@@ -51,18 +51,19 @@ def editor_clear_plot():
     draw_plot_limits()
 
 
-def editor_compute():
-    i_x_y_theta = compute()
-    if len(i_x_y_theta) > 0:
-        index_series = [data[0] for data in i_x_y_theta]
-        x_series = [data[1] for data in i_x_y_theta]
-        y_series = [data[2] for data in i_x_y_theta]
-        # theta_series = [data[3] for data in i_x_y_theta]
+def preview_2d_draw():
+    # i_x_y_theta = compute()
+    if len(editor_curve_x) > 0:
+        index_series = [i for i in range(len(editor_curve_x))]
+        
+        dpg.configure_item('2d_preview_x_curve', x=index_series, y=editor_curve_x)
+        dpg.configure_item('2d_preview_y_curve', x=index_series, y=editor_curve_y)
 
-        dpg.configure_item('2d_preview_x_curve', x=index_series, y=x_series)
-        dpg.configure_item('2d_preview_y_curve', x=index_series, y=y_series)
-
-
+def preview_3d_compute():
+    
+    if len(editor_curve_x) > 0:
+        pass
+        
 def compute():
     global editor_curve_x
     global editor_curve_y
@@ -337,7 +338,7 @@ with dpg.window(tag='primary_window'):
         with dpg.group(horizontal=True):
             dpg.add_button(label='Clear', callback=editor_clear_plot)
             dpg.add_button(label='Undo', callback=editor_undo_last_click)
-            dpg.add_button(label='Compute', callback=editor_compute)
+            dpg.add_button(label='Compute', callback=preview_2d_draw)
             dpg.add_button(label='Random Points', callback=editor_random_drag_points)
 
     with dpg.window(tag='2d_preview', label='2D Preview'):
@@ -386,7 +387,7 @@ while dpg.is_dearpygui_running():
     except Exception as e:
         print(traceback.format_exc())
 
-    editor_compute()
+    preview_2d_draw()
 
     dpg.render_dearpygui_frame()
 
