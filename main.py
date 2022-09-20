@@ -1,14 +1,16 @@
 import math
 import random
+import time
 import dearpygui.dearpygui as dpg
 from scipy.interpolate import splprep, splev
 import numpy as np
 
 dpg.create_context()
 
-NUM_PARAMETRIC_CURVE_POINTS = 10000
+NUM_PARAMETRIC_CURVE_POINTS = 50000
 CIRCLE_RADIUS = 2
-CAM_SCALE = 1
+cam_scale = 1
+
 
 CIRCLE_POINTS = []
 for t in range(NUM_PARAMETRIC_CURVE_POINTS):
@@ -65,20 +67,67 @@ def editor_add_circle():
     editor_add_drag_point((-1, 0))
     editor_add_drag_point((0, -1))
 
+
+def editor_add_square():
+    s = 0.9
+    editor_add_drag_point((s * 1,   1 * s))
+    editor_add_drag_point((s * 0.9, 1 * s))
+    editor_add_drag_point((s * 0.8, 1 * s))
+    editor_add_drag_point((s * 0.7, 1 * s))
+
+    editor_add_drag_point((s * -0.7, 1 * s))
+    editor_add_drag_point((s * -0.8, 1 * s))
+    editor_add_drag_point((s * -0.9, 1 * s))
+    editor_add_drag_point((s * -1,   1 * s))
+
+    editor_add_drag_point((s * -1,  0.9 * s))
+    editor_add_drag_point((s * -1,  0.8 * s))
+    editor_add_drag_point((s * -1,  0.7 * s))
+    editor_add_drag_point((s * -1, -0.7 * s))
+
+    editor_add_drag_point((s * -1,  -0.8 * s))
+    editor_add_drag_point((s * -1,  -0.9 * s))
+    editor_add_drag_point((s * -1,    -1 * s))
+    editor_add_drag_point((s * -0.9,  -1 * s))
+
+    editor_add_drag_point((s * -0.8, -1 * s))
+    editor_add_drag_point((s * -0.7, -1 * s))
+    editor_add_drag_point((s * 0.7,  -1 * s))
+    editor_add_drag_point((s * 0.8,  -1 * s))
+
+    editor_add_drag_point((s * 0.9, -1 * s))
+    editor_add_drag_point((s * 1,   -1 * s))
+    editor_add_drag_point((s * 1, -0.9 * s))
+    editor_add_drag_point((s * 1, -0.8 * s))
+
+    editor_add_drag_point((s * 1, -0.7 * s))
+    editor_add_drag_point((s * 1,  0.7 * s))
+    editor_add_drag_point((s * 1,  0.8 * s))
+    editor_add_drag_point((s * 1,  0.9 * s))
+
+
+def scale_cam(sender, data):
+    global cam_scale
+    cam_scale = data
+    preview_3d_draw()
+
+
 def preview_3d_draw():
     vertices = []
     if len(editor_curve_x) > 0:
         index_t = 0
         while index_t < len(editor_curve_x):
-            
+
             dx = editor_curve_x[index_t]
             dy = editor_curve_y[index_t]
-            
+
             y = CIRCLE_POINTS[index_t][0]
             z = CIRCLE_POINTS[index_t][1]
-                        
+
             V = (dx, y + ((dy * y) / CIRCLE_RADIUS), z + ((dy * z) / CIRCLE_RADIUS))
-                        
+
+            V = (V[0] * cam_scale, V[1] * cam_scale, V[2] * cam_scale)
+
             vertices.append(V)
 
             index_t += 1
@@ -99,10 +148,10 @@ def preview_3d_draw():
             dpg.delete_item('y_line')
         if dpg.does_alias_exist('z_line'):
             dpg.delete_item('z_line')
-            
-        dpg.draw_line((1, 0, 0), (-1, 0, 0), tag='x_line', parent='cam', color=(255, 0, 0)) # red
-        dpg.draw_line((0, 1, 0), (0, -1, 0), tag='y_line', parent='cam', color=(0, 255, 0)) # green 
-        dpg.draw_line((0, 0, 1), (0, 0, -1), tag='z_line', parent='cam', color=(0, 0, 255)) # blue
+
+        dpg.draw_line((1, 0, 0), (-1, 0, 0), tag='x_line', parent='cam', color=(255, 0, 0))  # red
+        dpg.draw_line((0, 1, 0), (0, -1, 0), tag='y_line', parent='cam', color=(0, 255, 0))  # green
+        dpg.draw_line((0, 0, 1), (0, 0, -1), tag='z_line', parent='cam', color=(0, 0, 255))  # blue
 
         if dpg.does_alias_exist('cam_lines'):
             dpg.delete_item('cam_lines')
@@ -210,6 +259,9 @@ def editor_undo_last_click():
         drag_points.pop(undo_order.pop())
 
 
+points = []
+
+
 def editor_draw_curve():
     global drag_points
 
@@ -228,6 +280,14 @@ def editor_draw_curve():
         editor_curve_x, editor_curve_y = splev(u_new, tck, der=0)
 
         dpg.configure_item('editor_curve', x=editor_curve_x, y=editor_curve_y)
+
+        # for point in points:
+        #     if dpg.does_alias_exist(point):
+        #         dpg.delete_item(point)
+        # for i in range(len(editor_curve_x)):
+        #     dpg.draw_circle((editor_curve_x[i], editor_curve_y[i]), radius=0.01, parent='editor_plot', tag=f'circle{i}', color=(255, 0, 0))
+        #     points.append(f'circle{i}')
+
     else:
         dpg.configure_item('editor_curve', x=[], y=[])
 
@@ -373,24 +433,6 @@ def draw_plot_limits():
     dpg.configure_item('editor_curve', x=x, y=y)
 
 
-# x_rot = 0
-# y_rot = 0
-# z_rot = 0
-
-
-# def rotate(sender, data, user_data):
-#     global x_rot
-#     global y_rot
-#     global z_rot
-
-#     if user_data == 'x':
-#         x_rot = data
-#     elif user_data == 'y':
-#         y_rot = data
-#     else:
-#         z_rot = data
-
-
 with dpg.window(tag='primary_window'):
     with dpg.window(tag='editor', label='Editor', horizontal_scrollbar=True):
         with dpg.plot(tag='editor_plot', pan_button=dpg.mvMouseButton_Middle, fit_button=dpg.mvMouseButton_Middle, no_menus=True, no_box_select=True, anti_aliased=True):
@@ -416,6 +458,7 @@ with dpg.window(tag='primary_window'):
             dpg.add_button(label='Compute', callback=preview_3d_draw)
             dpg.add_button(label='Random Points', callback=editor_random_drag_points)
             dpg.add_button(label='Add Circle', callback=editor_add_circle)
+            dpg.add_button(label='Add Square', callback=editor_add_square)
 
     with dpg.window(tag='2d_preview', label='2D Preview'):
         with dpg.plot(tag='2d_preview_plot', pan_button=dpg.mvMouseButton_Middle, fit_button=dpg.mvMouseButton_Middle):
@@ -441,9 +484,8 @@ with dpg.window(tag='primary_window'):
                                 parent='2d_preview_y_axis', label='z position')
 
     with dpg.window(tag='3d_preview', label='3D Preview'):
-        # dpg.add_slider_int(label='x rotation', user_data='x', min_value=-180, max_value=180, callback=rotate)
-        # dpg.add_slider_int(label='y rotation', user_data='y', min_value=-180, max_value=180, callback=rotate)
-        # dpg.add_slider_int(label='z rotation', user_data='z', min_value=-180, max_value=180, callback=rotate)
+        dpg.add_slider_float(label='Scale', min_value=0, max_value=5,
+                             default_value=cam_scale, callback=scale_cam)
         with dpg.drawlist(width=1, height=1, tag='3d_preview_drawlist'):
 
             # with dpg.draw_layer(tag="main pass", depth_clipping=True, perspective_divide=True, cull_mode=dpg.mvCullMode_Back):
@@ -470,9 +512,14 @@ def resize():
         width=dpg.get_item_width('3d_preview') - 17
     )
 
+    w = dpg.get_item_width('3d_preview')
+    h = dpg.get_item_height('3d_preview')
+
+    dpg.set_clip_space("main pass", 0, -h//8, w, h//1.2, -1.0, 1.0)
+
 
 dpg.configure_app(init_file='dpg.ini', docking=True, docking_space=True)
-dpg.create_viewport(title='Cam Draw')
+dpg.create_viewport()
 dpg.setup_dearpygui()
 dpg.show_viewport()
 dpg.set_primary_window('primary_window', True)
@@ -480,30 +527,51 @@ dpg.set_primary_window('primary_window', True)
 view = dpg.create_fps_matrix([0, 0, 15], 0.0, 0.0)
 proj = dpg.create_perspective_matrix(math.pi*45.0/180.0, 1.0, 0.1, 100)
 
+z_rot = 0
 x_rot = 70
 y_rot = 0
-z_rot = 0
 
-dpg.set_clip_space("main pass", 0, 0, 500, 500, -1.0, 1.0)
+start = time.time()
+fpss = []
 while dpg.is_dearpygui_running():
     resize()
 
     editor_draw_curve()
 
-    editor_draw_closest_point()
-    editor_draw_closest_points()
+    # editor_draw_closest_point()
+    # editor_draw_closest_points()
 
     preview_2d_draw()
-    preview_3d_draw()
+    # preview_3d_draw()
 
-    model = dpg.create_rotation_matrix(math.pi*x_rot/180.0 , [1, 0, 0])*\
-            dpg.create_rotation_matrix(math.pi*y_rot/180.0 , [0, 1, 0])*\
-            dpg.create_rotation_matrix(math.pi*z_rot/180.0 , [0, 0, 1])
+    model = dpg.create_rotation_matrix(math.pi*x_rot/180.0, [1, 0, 0]) *\
+        dpg.create_rotation_matrix(math.pi*y_rot/180.0, [0, 1, 0]) *\
+        dpg.create_rotation_matrix(math.pi*z_rot/180.0, [0, 0, 1])
 
     z_rot += 1
+    if z_rot > 360:
+        z_rot = 0
 
     dpg.apply_transform("cam", proj*view*model)
 
     dpg.render_dearpygui_frame()
+
+    delta = time.time() - start
+    if delta > 0:
+        fps = 1 / (time.time() - start)
+
+        fpss.append(fps)
+        if len(fpss) > 20:
+            fpss.pop(0)
+
+        fps_sum = 0
+        for fps in fpss:
+            fps_sum += fps
+
+        fps_average = fps_sum / len(fpss)
+
+        dpg.set_viewport_title(f'Cam Draw {fps_average:0.1f}')
+
+    start = time.time()
 
 dpg.destroy_context()
