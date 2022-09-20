@@ -1,6 +1,5 @@
 import math
 import random
-import traceback
 import dearpygui.dearpygui as dpg
 from scipy.interpolate import splprep, splev
 import numpy as np
@@ -8,6 +7,14 @@ import numpy as np
 dpg.create_context()
 
 NUM_PARAMETRIC_CURVE_POINTS = 10000
+CIRCLE_RADIUS = 2
+CAM_SCALE = 1
+
+CIRCLE_POINTS = []
+for t in range(NUM_PARAMETRIC_CURVE_POINTS):
+    y = CIRCLE_RADIUS * math.cos((2 * math.pi * t) / NUM_PARAMETRIC_CURVE_POINTS)
+    z = CIRCLE_RADIUS * math.sin((2 * math.pi * t) / NUM_PARAMETRIC_CURVE_POINTS)
+    CIRCLE_POINTS.append((y, z))
 
 drag_points = []
 editor_curve_x = []
@@ -38,32 +45,64 @@ def editor_clear_plot():
         dpg.delete_item('second_point_circle')
     except SystemError:
         pass
-    try:
-        dpg.delete_item('compute_circle')
-    except SystemError:
-        pass
-    try:
-        dpg.delete_item('compute_line')
-    except SystemError:
-        pass
+
     drag_points = []
     undo_order = []
     draw_plot_limits()
 
 
 def preview_2d_draw():
-    # i_x_y_theta = compute()
     if len(editor_curve_x) > 0:
         index_series = [i for i in range(len(editor_curve_x))]
-        
-        dpg.configure_item('2d_preview_x_curve', x=index_series, y=editor_curve_x)
-        dpg.configure_item('2d_preview_y_curve', x=index_series, y=editor_curve_y)
 
-def preview_3d_compute():
-    
+        dpg.configure_item('2d_preview_x_displacement', x=index_series, y=editor_curve_x)
+        dpg.configure_item('2d_preview_y_displacement', x=index_series, y=editor_curve_y)
+
+
+def preview_3d_draw():
+    vertices = []
     if len(editor_curve_x) > 0:
-        pass
-        
+        index_t = 0
+        while index_t < len(editor_curve_x):
+            
+            dx = editor_curve_x[index_t]
+            dy = editor_curve_y[index_t]
+            
+            y = CIRCLE_POINTS[index_t][0]
+            z = CIRCLE_POINTS[index_t][1]
+            
+            V = (dx, y + ((dy * y) / CIRCLE_RADIUS), z + ((dy * z) / CIRCLE_RADIUS))
+            
+            vertices.append(V)
+
+            index_t += 1
+
+        index_series = [i for i in range(len(editor_curve_x))]
+
+        x_series = [p[0] for p in vertices]
+        y_series = [p[1] for p in vertices]
+        z_series = [p[2] for p in vertices]
+
+        dpg.configure_item('2d_preview_x_position', x=index_series, y=x_series)
+        dpg.configure_item('2d_preview_y_position', x=index_series, y=y_series)
+        dpg.configure_item('2d_preview_z_position', x=index_series, y=z_series)
+
+        if dpg.does_alias_exist('x_line'):
+            dpg.delete_item('x_line')
+        if dpg.does_alias_exist('y_line'):
+            dpg.delete_item('y_line')
+        if dpg.does_alias_exist('z_line'):
+            dpg.delete_item('z_line')
+            
+        dpg.draw_line((1, 0, 0), (-1, 0, 0), tag='x_line', parent='cam', color=(255, 0, 0)) # red
+        dpg.draw_line((0, 1, 0), (0, -1, 0), tag='y_line', parent='cam', color=(0, 255, 0)) # green 
+        dpg.draw_line((0, 0, 1), (0, 0, -1), tag='z_line', parent='cam', color=(0, 0, 255)) # blue
+
+        if dpg.does_alias_exist('cam_lines'):
+            dpg.delete_item('cam_lines')
+        dpg.draw_polygon(points=vertices, tag='cam_lines', parent='cam', color=(255, 255, 255))
+
+
 def compute():
     global editor_curve_x
     global editor_curve_y
@@ -148,6 +187,18 @@ def editor_plot_click_right():
 def editor_undo_last_click():
     global drag_points
     global undo_order
+    try:
+        dpg.delete_item('editor_closet_point_circle')
+    except SystemError:
+        pass
+    try:
+        dpg.delete_item('first_point_circle')
+    except SystemError:
+        pass
+    try:
+        dpg.delete_item('second_point_circle')
+    except SystemError:
+        pass
     if len(drag_points) > 1:
         dpg.delete_item(drag_points[undo_order[-1]])
         drag_points.pop(undo_order.pop())
@@ -316,6 +367,24 @@ def draw_plot_limits():
     dpg.configure_item('editor_curve', x=x, y=y)
 
 
+# x_rot = 0
+# y_rot = 0
+# z_rot = 0
+
+
+# def rotate(sender, data, user_data):
+#     global x_rot
+#     global y_rot
+#     global z_rot
+
+#     if user_data == 'x':
+#         x_rot = data
+#     elif user_data == 'y':
+#         y_rot = data
+#     else:
+#         z_rot = data
+
+
 with dpg.window(tag='primary_window'):
     with dpg.window(tag='editor', label='Editor', horizontal_scrollbar=True):
         with dpg.plot(tag='editor_plot', pan_button=dpg.mvMouseButton_Middle, fit_button=dpg.mvMouseButton_Middle, no_menus=True, no_box_select=True, anti_aliased=True):
@@ -338,7 +407,7 @@ with dpg.window(tag='primary_window'):
         with dpg.group(horizontal=True):
             dpg.add_button(label='Clear', callback=editor_clear_plot)
             dpg.add_button(label='Undo', callback=editor_undo_last_click)
-            dpg.add_button(label='Compute', callback=preview_2d_draw)
+            dpg.add_button(label='Compute', callback=preview_3d_draw)
             dpg.add_button(label='Random Points', callback=editor_random_drag_points)
 
     with dpg.window(tag='2d_preview', label='2D Preview'):
@@ -348,16 +417,36 @@ with dpg.window(tag='primary_window'):
 
             dpg.add_plot_axis(dpg.mvXAxis, tag='2d_preview_x_axis')
             dpg.add_plot_axis(dpg.mvYAxis, tag='2d_preview_y_axis')
-            dpg.add_line_series(x=[], y=[], tag='2d_preview_x_curve',
+
+            dpg.add_line_series(x=[], y=[], tag='2d_preview_x_displacement',
                                 parent='2d_preview_y_axis', label='x displacement')
-            dpg.add_line_series(x=[], y=[], tag='2d_preview_y_curve',
+
+            dpg.add_line_series(x=[], y=[], tag='2d_preview_y_displacement',
                                 parent='2d_preview_y_axis', label='y displacement')
 
+            dpg.add_line_series(x=[], y=[], tag='2d_preview_x_position',
+                                parent='2d_preview_y_axis', label='x position')
+
+            dpg.add_line_series(x=[], y=[], tag='2d_preview_y_position',
+                                parent='2d_preview_y_axis', label='y position')
+
+            dpg.add_line_series(x=[], y=[], tag='2d_preview_z_position',
+                                parent='2d_preview_y_axis', label='z position')
+
     with dpg.window(tag='3d_preview', label='3D Preview'):
-        pass
+        # dpg.add_slider_int(label='x rotation', user_data='x', min_value=-180, max_value=180, callback=rotate)
+        # dpg.add_slider_int(label='y rotation', user_data='y', min_value=-180, max_value=180, callback=rotate)
+        # dpg.add_slider_int(label='z rotation', user_data='z', min_value=-180, max_value=180, callback=rotate)
+        with dpg.drawlist(width=1, height=1, tag='3d_preview_drawlist'):
+
+            # with dpg.draw_layer(tag="main pass", depth_clipping=True, perspective_divide=True, cull_mode=dpg.mvCullMode_Back):
+            with dpg.draw_layer(tag="main pass", depth_clipping=False, perspective_divide=True, cull_mode=dpg.mvCullMode_Back):
+
+                with dpg.draw_node(tag="cam"):
+                    pass
 
 
-def resize_plots():
+def resize():
     dpg.configure_item(
         item='editor_plot',
         height=dpg.get_item_height('editor') - 59,
@@ -368,6 +457,11 @@ def resize_plots():
         height=dpg.get_item_height('2d_preview') - 59,
         width=dpg.get_item_width('2d_preview') - 17
     )
+    dpg.configure_item(
+        item='3d_preview_drawlist',
+        height=dpg.get_item_height('3d_preview') - 59,
+        width=dpg.get_item_width('3d_preview') - 17
+    )
 
 
 dpg.configure_app(init_file='dpg.ini', docking=True, docking_space=True)
@@ -376,18 +470,32 @@ dpg.setup_dearpygui()
 dpg.show_viewport()
 dpg.set_primary_window('primary_window', True)
 
-draw_count = 0
+view = dpg.create_fps_matrix([0, 0, 15], 0.0, 0.0)
+proj = dpg.create_perspective_matrix(math.pi*45.0/180.0, 1.0, 0.1, 100)
+
+x_rot = 70
+y_rot = 0
+z_rot = 0
+
+dpg.set_clip_space("main pass", 0, 0, 500, 500, -1.0, 1.0)
 while dpg.is_dearpygui_running():
-    resize_plots()
+    resize()
 
     editor_draw_curve()
+
     editor_draw_closest_point()
-    try:
-        editor_draw_closest_points()
-    except Exception as e:
-        print(traceback.format_exc())
+    editor_draw_closest_points()
 
     preview_2d_draw()
+    preview_3d_draw()
+
+    model = dpg.create_rotation_matrix(math.pi*x_rot/180.0 , [1, 0, 0])*\
+            dpg.create_rotation_matrix(math.pi*y_rot/180.0 , [0, 1, 0])*\
+            dpg.create_rotation_matrix(math.pi*z_rot/180.0 , [0, 0, 1])
+
+    z_rot += 1
+
+    dpg.apply_transform("cam", proj*view*model)
 
     dpg.render_dearpygui_frame()
 
