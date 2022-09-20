@@ -59,6 +59,12 @@ def preview_2d_draw():
         dpg.configure_item('2d_preview_y_displacement', x=index_series, y=editor_curve_y)
 
 
+def editor_add_circle():
+    editor_add_drag_point((1, 0))
+    editor_add_drag_point((0, 1))
+    editor_add_drag_point((-1, 0))
+    editor_add_drag_point((0, -1))
+
 def preview_3d_draw():
     vertices = []
     if len(editor_curve_x) > 0:
@@ -70,9 +76,9 @@ def preview_3d_draw():
             
             y = CIRCLE_POINTS[index_t][0]
             z = CIRCLE_POINTS[index_t][1]
-            
+                        
             V = (dx, y + ((dy * y) / CIRCLE_RADIUS), z + ((dy * z) / CIRCLE_RADIUS))
-            
+                        
             vertices.append(V)
 
             index_t += 1
@@ -409,6 +415,7 @@ with dpg.window(tag='primary_window'):
             dpg.add_button(label='Undo', callback=editor_undo_last_click)
             dpg.add_button(label='Compute', callback=preview_3d_draw)
             dpg.add_button(label='Random Points', callback=editor_random_drag_points)
+            dpg.add_button(label='Add Circle', callback=editor_add_circle)
 
     with dpg.window(tag='2d_preview', label='2D Preview'):
         with dpg.plot(tag='2d_preview_plot', pan_button=dpg.mvMouseButton_Middle, fit_button=dpg.mvMouseButton_Middle):
