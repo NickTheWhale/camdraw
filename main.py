@@ -4,10 +4,11 @@ import time
 import dearpygui.dearpygui as dpg
 from scipy.interpolate import splprep, splev
 import numpy as np
+from editor import EditorPlot
 
 dpg.create_context()
 
-NUM_PARAMETRIC_CURVE_POINTS = 50000
+NUM_PARAMETRIC_CURVE_POINTS = 10000
 CIRCLE_RADIUS = 2
 cam_scale = 1
 
@@ -50,7 +51,6 @@ def editor_clear_plot():
 
     drag_points = []
     undo_order = []
-    draw_plot_limits()
 
 
 def preview_2d_draw():
@@ -156,45 +156,6 @@ def preview_3d_draw():
         if dpg.does_alias_exist('cam_lines'):
             dpg.delete_item('cam_lines')
         dpg.draw_polygon(points=vertices, tag='cam_lines', parent='cam', color=(255, 255, 255))
-
-
-def compute():
-    global editor_curve_x
-    global editor_curve_y
-
-    step_size = 1
-
-    data = []
-    if len(editor_curve_x):
-        if len(editor_curve_y):
-            index_t = 0
-            while index_t < NUM_PARAMETRIC_CURVE_POINTS:
-                x = editor_curve_x[index_t]
-                y = editor_curve_y[index_t]
-                theta = math.degrees(math.atan(y/x))
-                quadrant = point_quadrant((x, y))
-                if quadrant == 2 or quadrant == 3:
-                    theta += 180
-                elif quadrant == 4:
-                    theta += 360
-                data.append((index_t, x, y, theta))
-
-                index_t += step_size
-    return data
-
-
-def point_quadrant(point):
-    x = point[0]
-    y = point[1]
-    if x >= 0 and y >= 0:
-        quadrant = 1
-    elif x < 0 and y >= 0:
-        quadrant = 2
-    elif x < 0 and y < 0:
-        quadrant = 3
-    else:
-        quadrant = 4
-    return quadrant
 
 
 def editor_add_drag_point(position, index=None):
@@ -427,12 +388,6 @@ def editor_draw_closest_points():
                             parent='editor_plot', tag='second_point_circle')
 
 
-def draw_plot_limits():
-    x = (-1, 1, 1, -1, -1)
-    y = (1, 1, -1, -1, 1)
-    dpg.configure_item('editor_curve', x=x, y=y)
-
-
 with dpg.window(tag='primary_window'):
     with dpg.window(tag='editor', label='Editor', horizontal_scrollbar=True):
         with dpg.plot(tag='editor_plot', pan_button=dpg.mvMouseButton_Middle, fit_button=dpg.mvMouseButton_Middle, no_menus=True, no_box_select=True, anti_aliased=True):
@@ -488,12 +443,10 @@ with dpg.window(tag='primary_window'):
                              default_value=cam_scale, callback=scale_cam)
         with dpg.drawlist(width=1, height=1, tag='3d_preview_drawlist'):
 
-            # with dpg.draw_layer(tag="main pass", depth_clipping=True, perspective_divide=True, cull_mode=dpg.mvCullMode_Back):
             with dpg.draw_layer(tag="main pass", depth_clipping=False, perspective_divide=True, cull_mode=dpg.mvCullMode_Back):
 
                 with dpg.draw_node(tag="cam"):
                     pass
-
 
 def resize():
     dpg.configure_item(
@@ -542,7 +495,7 @@ while dpg.is_dearpygui_running():
     # editor_draw_closest_points()
 
     preview_2d_draw()
-    # preview_3d_draw()
+    preview_3d_draw()
 
     model = dpg.create_rotation_matrix(math.pi*x_rot/180.0, [1, 0, 0]) *\
         dpg.create_rotation_matrix(math.pi*y_rot/180.0, [0, 1, 0]) *\
