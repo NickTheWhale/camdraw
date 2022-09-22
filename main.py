@@ -231,7 +231,8 @@ def editor_draw_curve():
         global editor_curve_y
 
         a = [np.asanyarray([dpg.get_value(i)[0], dpg.get_value(i)[1]]) for i in drag_points]
-        a.append(np.asanyarray([dpg.get_value(drag_points[0])[0], dpg.get_value(drag_points[0])[1]]))
+        a.append(np.asanyarray([dpg.get_value(drag_points[0])
+                 [0], dpg.get_value(drag_points[0])[1]]))
         arr = np.asanyarray(a)
 
         tck, u = splprep(arr.T, per=True, s=0)
@@ -446,6 +447,7 @@ with dpg.window(tag='primary_window'):
 
                 with dpg.draw_node(tag="cam"):
                     pass
+
 
 def resize():
     dpg.configure_item(

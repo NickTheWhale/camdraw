@@ -1,12 +1,11 @@
 import random
 import time
-from turtle import width
 import dearpygui.dearpygui as dpg
 import numpy as np
 from scipy.interpolate import splprep, splev
-from scipy.spatial import cKDTree
 
 NUM_P = 10000
+
 
 class EditorPlot:
     def __init__(self, **options):
@@ -14,13 +13,11 @@ class EditorPlot:
         self._drag_point_tags = []
         self._undo_order = []
 
-        self._p_curve = np.array([[0, 0], [0, 0]])
+        self._p_curve = []
 
-        self._tree = cKDTree(self._p_curve)
-        
         self._height = 0
         self._width = 0
-        
+
         plot_options = {
             'tag': 'editor_plot',
             'pan_button': dpg.mvMouseButton_Middle,
@@ -44,9 +41,10 @@ class EditorPlot:
                 x, y = [-1, 1, 1, -1, -1], [1, 1, -1, -1, 1]
                 dpg.add_line_series(x=x, y=y, parent='editor_plot_y_axis')
             with dpg.group(horizontal=True):
-                dpg.add_button(label='Query', callback=self.closest_point)
+                dpg.add_button(label='Query', callback=self.closest_point_index)
                 dpg.add_button(label='Random', callback=self.add_random_points)
                 dpg.add_button(label='Clear', callback=self.clear_plot)
+                dpg.add_button(label='Compute', callback=self.compute_p_curve)
 
         with dpg.item_handler_registry(tag='editor_plot_handler'):
             dpg.add_item_clicked_handler(dpg.mvMouseButton_Left, callback=self.on_left_click)
@@ -67,53 +65,58 @@ class EditorPlot:
             self.add_drag_point(mouse_pos)
 
     def on_right_click(self):
-        mouse_pos = dpg.get_plot_mouse_pos()
-        closest_point = self.closest_point(mouse_pos)
-        if self.ready:
-            pass
+        if self.n_drag >= 3:
+            mouse_pos = dpg.get_plot_mouse_pos()
+            curve = self.compute_p_curve()
+            closest_index = self.closest_point_index(mouse_pos, curve)
+            closest_point = curve[closest_index]
+            print(closest_point)
 
-    def closest_point(self, point):
-        point = (0, 0)
-        # self._p_curve = np.array([[dpg.get_value(i)[0], dpg.get_value(i)[1]]
-        #                          for i in self._drag_point_tags])
-        
-        curve = self.parametric_curve()
-        if curve is not None:
-            if curve.shape[0] > 0 and curve.ndim == 2:
-                if not np.array_equal(self._tree.data, curve):
-                    print('building new kd tree')
-                    self._tree = cKDTree(curve)
-                # print(type(self._tree.data), type(self._p_curve))
-                # print(self._p_curve)
-                # print(self._tree.query(point))
-                print(curve[self._tree.query(point)[1]])
-                return curve[self._tree.query(point)[1]]
-    
-    def parametric_curve(self):
-        if self.ready:
-            drag_points = [np.array([dpg.get_value(i)[0], dpg.get_value(i)[1]]) for i in self._drag_point_tags]
-            drag_points.append(drag_points[0])        
-            drag_points_arr = np.array(drag_points)
-            tck, u = splprep(drag_points_arr.T, per=True, s=0)
+    def update_plot_curve(self):
+        if len(self._drag_point_tags) >= 3:
+            curve = self.compute_p_curve()
+            dpg.configure_item('editor_plot_curve', x=curve[0], y=curve[1])
+
+    def closest_point_index(self, point, curve):
+        if not isinstance(curve, list):
+            raise TypeError('curve must be of list type')
+        num_p = len(curve)
+        min_index = 0
+        if num_p > 0:
+            dx = point[0] - curve[0][0]
+            dy = point[1] - curve[0][1]
+            d = (dx * dx) + (dy * dy)
+            min_d = d
+            index = 1
+            while index < num_p:
+                dx = point[0] - curve[index][0]
+                dy = point[1] - curve[index][1]
+                d = (dx * dx) + (dy * dy)
+                if d < min_d:
+                    min_d = d
+                    min_index = index
+                index += 1
+        return min_index
+
+    def closest_points_indexes(self, point, curve):
+        pass
+
+    def compute_p_curve(self):
+        if len(self._drag_point_tags) >= 3:
+            drag_coords = [np.asanyarray([dpg.get_value(i)[0], dpg.get_value(i)[1]])
+                           for i in self._drag_point_tags]
+            drag_coords.append(drag_coords[0])
+            drag_coords = np.asanyarray(drag_coords)
+
+            tck, u = splprep(drag_coords.T, per=True, s=0)
             u_new = np.linspace(u.min(), u.max(), NUM_P)
-            
-            self._p_curve = np.array(splev(u_new, tck, der=0))
-            return self._p_curve[1]
-        
-        
 
+            self._p_curve = splev(u_new, tck, der=0)
+        return self._p_curve
 
-    def closest_two_points(self, point):
-        step_size = 1
-        found_threshold = 1e-4
-        
-    def compute_curve(self):
-        if self.ready:
-            pass
-        
     @property
-    def ready(self):
-        return len(self._drag_point_tags) >= 3
+    def n_drag(self):
+        return len(self._drag_point_tags)
 
     def add_drag_point(self, position, index=None):
         num_drag_points = len(self._drag_point_tags)
@@ -130,13 +133,14 @@ class EditorPlot:
         else:
             self._drag_point_tags.insert(index, f'dp{num_drag_points}')
             self._drag_point_tags.append(index)
+        self.update_plot_curve()
 
     def add_random_points(self):
         for i in range(10):
             x = (random.random() * 2) - 1
             y = (random.random() * 2) - 1
             self.add_drag_point((x, y))
-            
+
     def add_square(self):
         pass
 

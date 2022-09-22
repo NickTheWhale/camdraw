@@ -10,15 +10,13 @@ with dpg.window(tag='primary_window'):
 
 
 dpg.configure_app(init_file='layout.ini', docking=True, docking_space=True)
-dpg.create_viewport(height=600, width=600, vsync=True)
+dpg.create_viewport(height=500, width=500, vsync=True)
 dpg.setup_dearpygui()
 dpg.show_viewport()
 dpg.set_primary_window('primary_window', True)
 
 while dpg.is_dearpygui_running():
     start = time.time()
-    # editor.resize()
-    editor.parametric_curve()
     
     
     dpg.render_dearpygui_frame()
