@@ -43,7 +43,7 @@ class EditorPlot:
             with dpg.group(horizontal=True):
                 dpg.add_button(label='Clear', callback=self.clear_plot)
                 dpg.add_button(label='Random', callback=self.add_random_points)
-                dpg.add_button(label='Compute', callback=self.compute3D)
+                dpg.add_button(label='Compute', callback=self.compute_callback)
 
         with dpg.item_handler_registry(tag='editor_plot_handler'):
             dpg.add_item_clicked_handler(dpg.mvMouseButton_Left, callback=self.on_left_click)
@@ -166,19 +166,20 @@ class EditorPlot:
 
         return i1, i2
 
-    # def compute3D(self, curve: list[np.ndarray], radius = 1):
-    def compute3D(self, radius = 1):
+    def compute_callback(self):
         curve = self.compute_p_curve()
-        radius = 2
-        
+        vertices = self.compute3D(curve)
+
+    def compute3D(self, curve: list[np.ndarray], radius=2):
         num_p = curve[0].shape[0]
         x = curve[0][0]
         y = curve[1][0]
 
         w = (x, 1 + y, 0)
 
-        cam_points: list[list] = [[w[0]], [w[1]], [w[2]]]
-        
+        # vertices: list[list] = [[w[0]], [w[1]], [w[2]]]
+        vertices = [w]
+
         td = self.curve_length(curve)
 
         index_t = 1
@@ -188,21 +189,15 @@ class EditorPlot:
             dx = x - curve[0][index_t - 1]
             dy = y - curve[1][index_t - 1]
             d = math.sqrt((dx * dx) + (dy * dy))
-            print(d, td)
             theta = (d / td) * (2 * math.pi)
             w = (x, (radius + y) * math.cos(theta), (radius + y) * math.sin(theta))
-            cam_points[0].append(w[0])
-            cam_points[1].append(w[1])
-            cam_points[2].append(w[2])
+            # vertices[0].append(w[0])
+            # vertices[1].append(w[1])
+            # vertices[2].append(w[2])
+            vertices.append(w)
             index_t += 1
-        
-        xl = cam_points[0]
-        yl = cam_points[1]
-        zl = cam_points[2]
-        for i in range(len(xl)):
-            print(f'x: {xl[i]}, y: {yl[i]}, z: {zl[i]}')
-        
-        return cam_points
+
+        return vertices
 
     def curve_length(self, curve: list[np.ndarray]):
         num_p = curve[0].shape[0]
@@ -245,7 +240,7 @@ class EditorPlot:
         return self._p_curve
 
     @property
-    def n_drag(self) -> None:
+    def n_drag(self) -> int:
         """return number of drag points"""
         return len(self._drag_point_tags)
 

@@ -29,7 +29,12 @@ class Viewer3D:
         self._rot_y = y % 360
         self._rot_z = z % 360
         
-    def update(self):
+    def update(self, vertices: list[list | tuple]):
+        if dpg.does_alias_exist('cam_polygon'):
+            dpg.delete_item('cam_polygon')
+        dpg.draw_polygon(points=vertices, tag='cam_polygon', parent='3d_cam_node')
+        
+        
         self._model = dpg.create_rotation_matrix(math.pi*self._rot_x/180.0, [1, 0, 0]) *\
             dpg.create_rotation_matrix(math.pi*self._rot_y/180.0, [0, 1, 0]) *\
             dpg.create_rotation_matrix(math.pi*self._rot_z/180.0, [0, 0, 1])
