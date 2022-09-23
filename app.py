@@ -16,11 +16,9 @@ dpg.show_viewport()
 dpg.set_primary_window('primary_window', True)
 
 while dpg.is_dearpygui_running():
-    start = time.time()
-    
+
+    editor.resize()    
     
     dpg.render_dearpygui_frame()
-    stop = time.time()
-    # print(f'loop time (ms) {(stop - start) * 1000:0.3f}')
-
+    
 dpg.destroy_context()
