@@ -9,7 +9,7 @@ import stl
 
 NUM_P = 10000
 
-NUM_SEMI_CIRCLE_P = 100
+NUM_SEMI_CIRCLE_P = 10
 
 SEMI_CIRCLE = []
 for i in range(NUM_SEMI_CIRCLE_P):
@@ -75,11 +75,6 @@ class EditorPlot:
         with dpg.file_dialog(tag='file_dialog', show=False, callback=self.save):
             dpg.add_file_extension('.csv')
             dpg.add_file_extension('.txt')
-
-        for i in range(NUM_SEMI_CIRCLE_P + 1):
-            x = math.sin(((i * math.pi) / NUM_SEMI_CIRCLE_P) + (math.pi / 2))
-            y = math.cos(((i * math.pi) / NUM_SEMI_CIRCLE_P) + (math.pi / 2)) + 1
-            self.add_drag_point((x, y))
 
     def clear_plot(self) -> None:
         """clears drag point list and plot"""
@@ -259,25 +254,46 @@ class EditorPlot:
         return vertices
 
     def compute_cam(self):
+        print('computing cam')
+        
+        profile_splines = []
+        
+        semi_circle = self.semi_circle(10, 1)
 
-        for i in range(1000):
-            p_curve = self.compute_p_curve()
-            spline_vertices = self.compute_3D_spline(p_curve)
-
-    def edit_vertices(
-            self, vertices: list[tuple],
-            x: list[tuple],
-            y: list[tuple],
-            z: list[tuple]) -> list[tuple]:
-        new_vertices = []
+        spline_curve = self.compute_p_curve()
+        spline_vertices = self.compute_3D_spline(spline_curve)
+        
         index = 0
-        while index < len(vertices):
-            vertex = vertices[index]
-            new_vertex = (
-                vertex[0]
-            )
+        while index < len(semi_circle):
+            pass
+        
+        print('done')
+        
+    def scale_vertices(self, vertices: list[tuple], x_offset: float | int, scale: float | int) -> list[tuple]:
+        scaled_vertices = []
+        
+        for vertex in vertices:
+            x = vertex[0] + x_offset
+            y = vertex[1] * scale
+            z = vertex[2] * scale
+            scaled_vertices.append((x, y, z))
+        
+        return scaled_vertices
+        
+        
+        
+    def semi_circle(self, vertices, radius) -> list[tuple]:
+        """calculate semi circle vertices"""
+        semi_circle = []
+        for i in range(vertices):
+            x = radius * (math.sin(((i * math.pi) / (vertices - 1)) + (math.pi / 2)))
+            y = radius * (math.cos(((i * math.pi) / (vertices - 1)) + (math.pi / 2)) + 1)
+            semi_circle.append((x, y))
+        return semi_circle
+
 
     def curve_length(self, curve: list[np.ndarray]):
+        """calculate discrete curve length"""
         num_p = curve[0].shape[0]
 
         length = 0
@@ -291,6 +307,7 @@ class EditorPlot:
         return length
 
     def animate_circle(self, center, radius, color=(255, 255, 255)):
+        """delete and redraw circle at specified point"""
         with dpg.mutex():
             if dpg.does_alias_exist('animation_circle'):
                 dpg.delete_item('animation_circle')

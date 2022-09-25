@@ -6,16 +6,21 @@ import dearpygui.dearpygui as dpg
 class Viewer3D:
     def __init__(self, **options):
 
+        self._initial_rot_x = 75
+        self._initial_rot_y = 0
+        self._initial_rot_z = 45
+        self._initial_scale = 1
+
+        self._rot_x = self._initial_rot_x
+        self._rot_y = self._initial_rot_y
+        self._rot_z = self._initial_rot_z
+
+        self._scale = self._initial_scale
+
         self._height = 0
         self._width = 0
 
-        self._rot_x = 75
-        self._rot_y = 0
-        self._rot_z = 45
-
         self._rotate = False
-
-        self._scale = 1
 
         with dpg.window(tag='3d_viewer_window', **options):
             with dpg.drawlist(width=1, height=1, tag='3d_drawlist'):
@@ -85,11 +90,12 @@ class Viewer3D:
         self.apply_transforms()
 
     def reset(self):
-        self._rot_x = 75
-        self._rot_y = 0
-        self._rot_z = 45
-        self._scale = 1
+        self._rot_x = self._initial_rot_x
+        self._rot_y = self._initial_rot_y
+        self._rot_z = self._initial_rot_z
 
+        self._scale = self._initial_scale
+        
         dpg.set_value(item='x_slider', value=self._rot_x)
         dpg.set_value(item='y_slider', value=self._rot_y)
         dpg.set_value(item='z_slider', value=self._rot_z)
@@ -110,8 +116,12 @@ class Viewer3D:
             if dpg.does_alias_exist('cam_polygon'):
                 dpg.delete_item('cam_polygon')
 
-            dpg.draw_polygon(points=decimated_vertices, tag='cam_polygon',
-                             parent='3d_cam_node', color=(255, 255, 255))
+            dpg.draw_polygon(
+                points=decimated_vertices,
+                tag='cam_polygon',
+                parent='3d_cam_node',
+                color=(255, 255, 255)
+            )
             dpg.draw_line((1, 0, 0), (-1, 0, 0), parent='3d_cam_node', color=(255, 0, 0))  # red
             dpg.draw_line((0, 1, 0), (0, -1, 0), parent='3d_cam_node', color=(0, 255, 0))  # green
             dpg.draw_line((0, 0, 1), (0, 0, -1), parent='3d_cam_node', color=(0, 0, 255))  # blue
