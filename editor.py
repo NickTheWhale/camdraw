@@ -1,10 +1,23 @@
 import math
 import random
+
 import dearpygui.dearpygui as dpg
 import numpy as np
-from scipy.interpolate import splprep, splev
+from scipy.interpolate import splev, splprep
+
+import stl
 
 NUM_P = 10000
+
+NUM_SEMI_CIRCLE_P = 100
+
+SEMI_CIRCLE = []
+for i in range(NUM_SEMI_CIRCLE_P):
+    x = math.sin((i * 2 * math.pi) / NUM_SEMI_CIRCLE_P)
+    y = math.cos(((i * 2 * math.pi) / NUM_SEMI_CIRCLE_P) + 1)
+    SEMI_CIRCLE.append((x, y))
+
+# print(SEMI_CIRCLE)
 
 
 class EditorPlot:
@@ -17,6 +30,8 @@ class EditorPlot:
 
         self._height = 0
         self._width = 0
+
+        self._dirty = True
 
         plot_options = {
             'tag': 'editor_plot',
@@ -43,12 +58,28 @@ class EditorPlot:
             with dpg.group(horizontal=True):
                 dpg.add_button(label='Clear', callback=self.clear_plot)
                 dpg.add_button(label='Random', callback=self.add_random_points)
-                dpg.add_button(label='Compute', callback=self.compute_callback)
+                dpg.add_button(label='Add Square', callback=self.add_square)
+                dpg.add_button(label='Add Circle', callback=self.add_circle)
+                dpg.add_button(label='Save', callback=self.on_save)
+                dpg.add_button(label='Compute Cam', callback=self.compute_cam)
 
         with dpg.item_handler_registry(tag='editor_plot_handler'):
             dpg.add_item_clicked_handler(dpg.mvMouseButton_Left, callback=self.on_left_click)
             dpg.add_item_clicked_handler(dpg.mvMouseButton_Right, callback=self.on_right_click)
             dpg.bind_item_handler_registry('editor_plot', 'editor_plot_handler')
+
+        with dpg.item_handler_registry(tag='editor_window_handler'):
+            dpg.add_item_resize_handler(callback=self.resize)
+            dpg.bind_item_handler_registry('editor_window', 'editor_window_handler')
+
+        with dpg.file_dialog(tag='file_dialog', show=False, callback=self.save):
+            dpg.add_file_extension('.csv')
+            dpg.add_file_extension('.txt')
+
+        for i in range(NUM_SEMI_CIRCLE_P + 1):
+            x = math.sin(((i * math.pi) / NUM_SEMI_CIRCLE_P) + (math.pi / 2))
+            y = math.cos(((i * math.pi) / NUM_SEMI_CIRCLE_P) + (math.pi / 2)) + 1
+            self.add_drag_point((x, y))
 
     def clear_plot(self) -> None:
         """clears drag point list and plot"""
@@ -64,6 +95,8 @@ class EditorPlot:
         mouse_pos = dpg.get_plot_mouse_pos()
         if abs(mouse_pos[0]) <= 1 and abs(mouse_pos[1]) <= 1:
             self.add_drag_point(mouse_pos)
+        self.update_plot_curve()
+        self.dirty = True
 
     def on_right_click(self) -> None:
         """right mouse button click callback. Adds drag point between 
@@ -77,7 +110,26 @@ class EditorPlot:
             i1, i2 = self.closest_points_indexes_along_curve(
                 closest_curve_point, self.drag_point_coordinates(), p_curve)
 
-            print(closest_index, i1, i2)
+        self.update_plot_curve()
+        self.dirty = True
+
+    def on_save(self) -> None:
+        """save button callback"""
+        dpg.show_item('file_dialog')
+        w = dpg.get_viewport_width() / 1.5
+        h = dpg.get_viewport_height() / 1.5
+        dpg.configure_item('file_dialog', width=w, height=h)
+
+    def save(self, sender, app_data: dict, user_data):
+        """save cam vertices to file"""
+        save_path = app_data.pop('file_path_name', None)
+        if save_path is not None:
+            with open(save_path, 'w') as file:
+                curve = self.compute_p_curve()
+                vertices = self.compute_3D_spline(curve)
+                for vertex in vertices:
+                    x, y, z = vertex[0], vertex[1], vertex[2]
+                    file.write(f'{x}, {y}, {z}\n')
 
     def update_plot_curve(self) -> None:
         """computes parametric spline and updates plot"""
@@ -158,7 +210,6 @@ class EditorPlot:
                     dx = curve_test_point[0] - drag_point[0]
                     dy = curve_test_point[1] - drag_point[1]
                     distance = (dx * dx) + (dy * dy)
-                    print(curve_test_point, distance, drag_point, search_index)
                     if distance < found_threshold:
                         i1 = drag_point_index
                         i1_found = True
@@ -166,38 +217,65 @@ class EditorPlot:
 
         return i1, i2
 
-    def compute_callback(self):
-        curve = self.compute_p_curve()
-        vertices = self.compute3D(curve)
-
-    def compute3D(self, curve: list[np.ndarray], radius=2):
+    def compute_3D_spline(self, curve: list[np.ndarray], radius=2) -> list[tuple]:
         num_p = curve[0].shape[0]
-        x = curve[0][0]
-        y = curve[1][0]
+        x_displacement = curve[0][0]
+        y_displacement = curve[1][0]
 
-        w = (x, 1 + y, 0)
+        V = (x_displacement, radius + y_displacement, 0)
 
-        # vertices: list[list] = [[w[0]], [w[1]], [w[2]]]
-        vertices = [w]
+        vertices = [V]
 
-        td = self.curve_length(curve)
+        total_distance = self.curve_length(curve)
 
         index_t = 1
+        theta = 0
         while index_t < num_p:
-            x = curve[0][index_t]
-            y = curve[1][index_t]
-            dx = x - curve[0][index_t - 1]
-            dy = y - curve[1][index_t - 1]
-            d = math.sqrt((dx * dx) + (dy * dy))
-            theta = (d / td) * (2 * math.pi)
-            w = (x, (radius + y) * math.cos(theta), (radius + y) * math.sin(theta))
-            # vertices[0].append(w[0])
-            # vertices[1].append(w[1])
-            # vertices[2].append(w[2])
-            vertices.append(w)
+            x_displacement = curve[0][index_t]
+            y_displacement = curve[1][index_t]
+
+            x_prev = curve[0][index_t - 1]
+            y_prev = curve[1][index_t - 1]
+
+            dx = x_displacement - x_prev
+            dy = y_displacement - y_prev
+
+            current_distance = math.sqrt((dx * dx) + (dy * dy))
+
+            theta += (current_distance * 2 * math.pi) / total_distance
+
+            y_circle = radius * math.cos(theta)
+            z_circle = radius * math.sin(theta)
+
+            V = (
+                x_displacement,
+                y_circle + ((y_displacement * y_circle / radius)),
+                z_circle + ((y_displacement * z_circle / radius))
+            )
+
+            vertices.append(V)
             index_t += 1
 
         return vertices
+
+    def compute_cam(self):
+
+        for i in range(1000):
+            p_curve = self.compute_p_curve()
+            spline_vertices = self.compute_3D_spline(p_curve)
+
+    def edit_vertices(
+            self, vertices: list[tuple],
+            x: list[tuple],
+            y: list[tuple],
+            z: list[tuple]) -> list[tuple]:
+        new_vertices = []
+        index = 0
+        while index < len(vertices):
+            vertex = vertices[index]
+            new_vertex = (
+                vertex[0]
+            )
 
     def curve_length(self, curve: list[np.ndarray]):
         num_p = curve[0].shape[0]
@@ -239,11 +317,6 @@ class EditorPlot:
             self._p_curve = splev(u_new, tck, der=0)
         return self._p_curve
 
-    @property
-    def n_drag(self) -> int:
-        """return number of drag points"""
-        return len(self._drag_point_tags)
-
     def drag_point_coordinates(self) -> list[tuple]:
         """return list of drag point coordinates"""
         return [(dpg.get_value(i)[0], dpg.get_value(i)[1]) for i in self._drag_point_tags]
@@ -251,6 +324,7 @@ class EditorPlot:
     def drag_point_move(self):
         """updates plot curve when any drag point is moved"""
         self.update_plot_curve()
+        self.dirty = True
 
     def add_drag_point(self, position: list | tuple, index=None) -> None:
         """add new drag point to editor plot
@@ -275,7 +349,7 @@ class EditorPlot:
         else:
             self._drag_point_tags.insert(index, f'dp{num_drag_points}')
             self._drag_point_tags.append(index)
-        self.update_plot_curve()
+        # self.update_plot_curve()
 
     def add_random_points(self) -> None:
         """add 10 drag points at random positions"""
@@ -283,12 +357,49 @@ class EditorPlot:
             x = (random.random() * 2) - 1
             y = (random.random() * 2) - 1
             self.add_drag_point((x, y))
+        self.update_plot_curve()
+        self.dirty = True
 
     def add_square(self) -> None:
-        pass
+        s = 0.9
+        self.add_drag_point((s * 1,   1 * s))
+        self.add_drag_point((s * 0.9, 1 * s))
+        self.add_drag_point((s * 0.8, 1 * s))
+        self.add_drag_point((s * 0.7, 1 * s))
+        self.add_drag_point((s * -0.7, 1 * s))
+        self.add_drag_point((s * -0.8, 1 * s))
+        self.add_drag_point((s * -0.9, 1 * s))
+        self.add_drag_point((s * -1,   1 * s))
+        self.add_drag_point((s * -1,  0.9 * s))
+        self.add_drag_point((s * -1,  0.8 * s))
+        self.add_drag_point((s * -1,  0.7 * s))
+        self.add_drag_point((s * -1, -0.7 * s))
+        self.add_drag_point((s * -1,  -0.8 * s))
+        self.add_drag_point((s * -1,  -0.9 * s))
+        self.add_drag_point((s * -1,    -1 * s))
+        self.add_drag_point((s * -0.9,  -1 * s))
+        self.add_drag_point((s * -0.8, -1 * s))
+        self.add_drag_point((s * -0.7, -1 * s))
+        self.add_drag_point((s * 0.7,  -1 * s))
+        self.add_drag_point((s * 0.8,  -1 * s))
+        self.add_drag_point((s * 0.9, -1 * s))
+        self.add_drag_point((s * 1,   -1 * s))
+        self.add_drag_point((s * 1, -0.9 * s))
+        self.add_drag_point((s * 1, -0.8 * s))
+        self.add_drag_point((s * 1, -0.7 * s))
+        self.add_drag_point((s * 1,  0.7 * s))
+        self.add_drag_point((s * 1,  0.8 * s))
+        self.add_drag_point((s * 1,  0.9 * s))
+        self.update_plot_curve()
+        self.dirty = True
 
     def add_circle(self) -> None:
-        pass
+        self.add_drag_point((1, 0))
+        self.add_drag_point((0, 1))
+        self.add_drag_point((-1, 0))
+        self.add_drag_point((0, -1))
+        self.update_plot_curve()
+        self.dirty = True
 
     def resize(self) -> None:
         """resize editor plot based on window size"""
@@ -298,3 +409,16 @@ class EditorPlot:
             dpg.configure_item(item='editor_plot', height=new_height, width=new_width)
             self._height = new_height
             self._width = new_width
+
+    @property
+    def n_drag(self) -> int:
+        """return number of drag points"""
+        return len(self._drag_point_tags)
+
+    @property
+    def dirty(self) -> bool:
+        return self._dirty
+
+    @dirty.setter
+    def dirty(self, is_dirty: bool) -> None:
+        self._dirty = is_dirty

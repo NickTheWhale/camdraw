@@ -1,4 +1,5 @@
 import dearpygui.dearpygui as dpg
+
 from editor import EditorPlot
 from viewer import Viewer3D
 
@@ -11,20 +12,28 @@ with dpg.window(tag='primary_window'):
 
 
 dpg.configure_app(init_file='layout.ini', docking=True, docking_space=True)
-dpg.create_viewport(height=500, width=1000, vsync=True)
+dpg.create_viewport(vsync=True)
 dpg.setup_dearpygui()
 dpg.show_viewport()
 dpg.set_primary_window('primary_window', True)
 
-while dpg.is_dearpygui_running():
 
-    editor.resize()    
-    viewer.resize()
-    if editor.n_drag >= 3:
-        p_curve = editor.compute_p_curve()
-        vertices = editor.compute3D(p_curve)
-        viewer.update(vertices)
-    
+while dpg.is_dearpygui_running():
+    try:
+        if editor.dirty:
+            if editor.n_drag >= 3:
+                if not dpg.is_mouse_button_down(dpg.mvMouseButton_Left):
+                    p_curve = editor.compute_p_curve()
+                    vertices = editor.compute_3D_spline(p_curve)
+                    viewer.update(vertices, 100)
+                    editor.dirty = False
+
+        if viewer.rotating:
+            viewer.rotate(0.35)
+
+    except Exception as e:
+        print(e)
+
     dpg.render_dearpygui_frame()
-    
+
 dpg.destroy_context()
