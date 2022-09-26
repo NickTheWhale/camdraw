@@ -256,15 +256,18 @@ class EditorPlot:
             xt0, yt0, zt0 = vertices[t][0], vertices[t][1], vertices[t][2]
             xt1, yt1, zt1 = vertices[t + 1][0], vertices[t + 1][1], vertices[t + 1][2]
 
-            N = np.array((xt1 - xt0, yt1 - yt0, zt1 - zt0)) * 100
+            n = np.array((xt1 - xt0, yt1 - yt0, zt1 - zt0))
+            N = n / np.linalg.norm(n)
 
             P0 = np.array((xt0, yt0, zt0))
             
-            P1 = np.cross(N, P0)
-
+            
+            p1 = np.cross(N, P0)
+            P1 = p1 / np.linalg.norm(p1)
+            
             dpg.draw_line(
                 p1=P0,
-                p2=P0 + (N * 10),
+                p2=P0 + N,
                 parent='3d_cam_node',
                 color=(255, 0, 0),
                 thickness=1
@@ -283,8 +286,8 @@ class EditorPlot:
                 color=(0, 255, 0),
                 thickness=1
             )
-
-            t += 1
+            
+            t += 100
 
         print('done')
 

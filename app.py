@@ -29,7 +29,7 @@ while dpg.is_dearpygui_running():
                     # polygons = editor.compute_cam()
                     # viewer.draw_polygons(polygons, 100)
                     # viewer.update(vertices)
-                    # editor.dirty = False
+                    editor.dirty = False
 
         if viewer.rotating:
             viewer.rotate(0.35)
