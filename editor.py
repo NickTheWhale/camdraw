@@ -253,6 +253,20 @@ class EditorPlot:
 
         t = 0
         while t < len(vertices) - 1:
+            # calculate x and y unit vectors relative to plane at p0
+            
+            # point on the curve at t
+            P0 = np.array((vertices[t][0], vertices[t][1], vertices[t][2]))
+            
+            # calculate unit normal vector based on next point
+            previous_point = np.array((vertices[t + 1][0], vertices[t + 1][1], vertices[t + 1][2]))
+            
+            
+            
+            
+            
+            
+            
             xt0, yt0, zt0 = vertices[t][0], vertices[t][1], vertices[t][2]
             xt1, yt1, zt1 = vertices[t + 1][0], vertices[t + 1][1], vertices[t + 1][2]
 
@@ -260,11 +274,27 @@ class EditorPlot:
             N = n / np.linalg.norm(n)
 
             P0 = np.array((xt0, yt0, zt0))
-            
-            
-            p1 = np.cross(N, P0)
-            P1 = p1 / np.linalg.norm(p1)
-            
+
+            # ax + by + cz + d = 0
+
+            d = np.sum(N * P0)
+
+            a = N[0]
+            b = N[1]
+            c = N[2]
+
+            x = P0[0]
+            y = P0[1]
+
+            z = ((a * x) + (b * y) - d) / -c
+
+            dpg.draw_circle(
+                center=(x, y, z),
+                radius=3,
+                parent='3d_cam_node',
+                color=(255, 255, 0)
+            )
+
             dpg.draw_line(
                 p1=P0,
                 p2=P0 + N,
@@ -272,13 +302,7 @@ class EditorPlot:
                 color=(255, 0, 0),
                 thickness=1
             )
-            dpg.draw_line(
-                p1=P0,
-                p2=P0 + P1,
-                parent='3d_cam_node',
-                color=(0, 0, 255),
-                thickness=1
-            )
+
             dpg.draw_line(
                 p1=(0, 0, 0),
                 p2=P0,
@@ -286,8 +310,8 @@ class EditorPlot:
                 color=(0, 255, 0),
                 thickness=1
             )
-            
-            t += 100
+
+            t += 250
 
         print('done')
 
