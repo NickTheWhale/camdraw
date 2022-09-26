@@ -1,4 +1,5 @@
 import math
+import time
 
 import dearpygui.dearpygui as dpg
 
@@ -104,7 +105,6 @@ class Viewer3D:
         self.apply_transforms()
 
     def update(self, vertices: list[list | tuple], decimation_factor=1):
-
         decimated_vertices = []
         if decimation_factor > 1:
             decimated_vertices = [vertices[i] for i in range(0, len(vertices), decimation_factor)]
@@ -125,11 +125,33 @@ class Viewer3D:
             dpg.draw_line((1, 0, 0), (-1, 0, 0), parent='3d_cam_node', color=(255, 0, 0))  # red
             dpg.draw_line((0, 1, 0), (0, -1, 0), parent='3d_cam_node', color=(0, 255, 0))  # green
             dpg.draw_line((0, 0, 1), (0, 0, -1), parent='3d_cam_node', color=(0, 0, 255))  # blue
-
+        
             if self._rotate:
                 self.rotate()
 
             self.apply_transforms()
+            
+    def draw_polygons(self, polygons, decimation_factor=1):
+        try:
+            decimated_polygons = []
+            if decimation_factor > 1:
+                for i in range(len(polygons)):
+                    decimated_polygon = [polygons[i][j] for j in range(0, len(polygons[i]), decimation_factor)]
+                    decimated_polygons.append(decimated_polygon)
+            else:
+                decimated_polygons = polygons
+                
+            for i in range(len(decimated_polygons)):
+                if dpg.does_alias_exist(f'cam_polygon{i}'):
+                    dpg.delete_item(f'cam_polygon{i}')
+                dpg.draw_polygon(
+                    points=decimated_polygons[i],
+                    tag=f'cam_polygon{i}',
+                    parent='3d_cam_node',
+                    color=(255, 255, 255)
+                )
+        except Exception as e:
+            print(e)
 
     def apply_transforms(self) -> None:
         model = dpg.create_rotation_matrix(math.pi*self._rot_x/180.0, [1, 0, 0]) *\

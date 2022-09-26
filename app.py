@@ -26,8 +26,10 @@ while dpg.is_dearpygui_running():
                     p_curve = editor.compute_p_curve()
                     vertices = editor.compute_3D_spline(p_curve)
                     viewer.update(vertices, 100)
+                    # polygons = editor.compute_cam()
+                    # viewer.draw_polygons(polygons, 100)
                     # viewer.update(vertices)
-                    editor.dirty = False
+                    # editor.dirty = False
 
         if viewer.rotating:
             viewer.rotate(0.35)

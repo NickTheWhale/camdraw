@@ -1,5 +1,6 @@
 import math
 import random
+import time
 
 import dearpygui.dearpygui as dpg
 import numpy as np
@@ -8,16 +9,6 @@ from scipy.interpolate import splev, splprep
 import stl
 
 NUM_P = 10000
-
-NUM_SEMI_CIRCLE_P = 10
-
-SEMI_CIRCLE = []
-for i in range(NUM_SEMI_CIRCLE_P):
-    x = math.sin((i * 2 * math.pi) / NUM_SEMI_CIRCLE_P)
-    y = math.cos(((i * 2 * math.pi) / NUM_SEMI_CIRCLE_P) + 1)
-    SEMI_CIRCLE.append((x, y))
-
-# print(SEMI_CIRCLE)
 
 
 class EditorPlot:
@@ -253,35 +244,50 @@ class EditorPlot:
 
         return vertices
 
+    # def compute_cam(self, vertices: list[list]):
     def compute_cam(self):
         print('computing cam')
-        
-        profile_splines = []
-        
-        semi_circle = self.semi_circle(10, 1)
 
-        spline_curve = self.compute_p_curve()
-        spline_vertices = self.compute_3D_spline(spline_curve)
-        
-        index = 0
-        while index < len(semi_circle):
-            pass
-        
+        p_curve = self.compute_p_curve()
+        vertices = self.compute_3D_spline(p_curve)
+
+        t = 0
+        while t < len(vertices) - 1:
+            xt0, yt0, zt0 = vertices[t][0], vertices[t][1], vertices[t][2]
+            xt1, yt1, zt1 = vertices[t + 1][0], vertices[t + 1][1], vertices[t + 1][2]
+
+            N = np.array((xt1 - xt0, yt1 - yt0, zt1 - zt0)) * 100
+
+            P0 = np.array((xt0, yt0, zt0))
+            
+            P1 = np.cross(N, P0)
+
+            dpg.draw_line(
+                p1=P0,
+                p2=P0 + (N * 10),
+                parent='3d_cam_node',
+                color=(255, 0, 0),
+                thickness=1
+            )
+            dpg.draw_line(
+                p1=P0,
+                p2=P0 + P1,
+                parent='3d_cam_node',
+                color=(0, 0, 255),
+                thickness=1
+            )
+            dpg.draw_line(
+                p1=(0, 0, 0),
+                p2=P0,
+                parent='3d_cam_node',
+                color=(0, 255, 0),
+                thickness=1
+            )
+
+            t += 1
+
         print('done')
-        
-    def scale_vertices(self, vertices: list[tuple], x_offset: float | int, scale: float | int) -> list[tuple]:
-        scaled_vertices = []
-        
-        for vertex in vertices:
-            x = vertex[0] + x_offset
-            y = vertex[1] * scale
-            z = vertex[2] * scale
-            scaled_vertices.append((x, y, z))
-        
-        return scaled_vertices
-        
-        
-        
+
     def semi_circle(self, vertices, radius) -> list[tuple]:
         """calculate semi circle vertices"""
         semi_circle = []
@@ -290,7 +296,6 @@ class EditorPlot:
             y = radius * (math.cos(((i * math.pi) / (vertices - 1)) + (math.pi / 2)) + 1)
             semi_circle.append((x, y))
         return semi_circle
-
 
     def curve_length(self, curve: list[np.ndarray]):
         """calculate discrete curve length"""
