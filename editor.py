@@ -53,6 +53,7 @@ class EditorPlot:
                 dpg.add_button(label='Add Circle', callback=self.add_circle)
                 dpg.add_button(label='Save', callback=self.on_save)
                 dpg.add_button(label='Compute Cam', callback=self.compute_cam)
+                dpg.add_button(label='Test atan', callback=self.test_atan)
 
         with dpg.item_handler_registry(tag='editor_plot_handler'):
             dpg.add_item_clicked_handler(dpg.mvMouseButton_Left, callback=self.on_left_click)
@@ -254,42 +255,36 @@ class EditorPlot:
         t = 0
         while t < len(vertices) - 1:
             # calculate x and y unit vectors relative to plane at p0
-            
+
             # point on the curve at t
-            P0 = np.array((vertices[t][0], vertices[t][1], vertices[t][2]))
-            
-            # calculate unit normal vector based on next point
-            previous_point = np.array((vertices[t + 1][0], vertices[t + 1][1], vertices[t + 1][2]))
-            
-            
-            
-            
-            
-            
-            
-            xt0, yt0, zt0 = vertices[t][0], vertices[t][1], vertices[t][2]
-            xt1, yt1, zt1 = vertices[t + 1][0], vertices[t + 1][1], vertices[t + 1][2]
+            P0 = np.array([
+                [vertices[t][0]],
+                [vertices[t][1]],
+                [vertices[t][2]]
+            ])
 
-            n = np.array((xt1 - xt0, yt1 - yt0, zt1 - zt0))
-            N = n / np.linalg.norm(n)
-
-            P0 = np.array((xt0, yt0, zt0))
-
-            # ax + by + cz + d = 0
-
-            d = np.sum(N * P0)
-
-            a = N[0]
-            b = N[1]
-            c = N[2]
-
-            x = P0[0]
-            y = P0[1]
-
-            z = ((a * x) + (b * y) - d) / -c
+            # unit normal from point P0
+            previous_point = np.array([
+                [vertices[t + 1][0]],
+                [vertices[t + 1][1]],
+                [vertices[t + 1][2]]
+            ])
+            normal = previous_point - P0
+            N = normal / np.linalg.norm(normal)
+        
+            rx, ry, rz = self.euler(P0)
+    
+            PR = self.rot(P0, rx, ry, rz)
 
             dpg.draw_circle(
-                center=(x, y, z),
+                center=PR,
+                radius=3,
+                parent='3d_cam_node',
+                color=(255, 255, 255)
+            )
+
+            dpg.draw_circle(
+                center=P0,
                 radius=3,
                 parent='3d_cam_node',
                 color=(255, 255, 0)
@@ -314,6 +309,59 @@ class EditorPlot:
             t += 250
 
         print('done')
+
+    def euler(self, v):
+        x = v[0][0]
+        y = v[1][0]
+        z = v[2][0]
+
+        rx = self.atan(y, x)
+        ry = self.atan(x, z)
+        rz = self.atan(y, z)
+
+        return rx, ry, rz
+    
+    def test_atan(self):
+        for i in range(360):
+            theta = i * np.pi / 180
+            print(theta, self.atan(np.cos(theta), np.sin(theta)))
+            
+    
+    def atan(self, x, y):
+        if x >= 0 and y >= 0:
+            # q1
+            theta = np.arctan(y/x)
+        elif x < 0 and y >= 0:
+            # q2
+            theta = np.arctan(y/x) + np.pi
+        elif x < 0 and y < 0:
+            # q3
+            theta = np.arctan(y/x) + np.pi
+        else:
+            # q4
+            theta = np.arctan(y/x) + np.pi * 2
+            
+        return theta
+        
+
+    def rot(self, v, x, y, z):
+        R = self.rot_z(z) * self.rot_y(y) * self.rot_x(x)
+        return R * v
+
+    def rot_x(self, theta):
+        return np.matrix([[1, 0, 0],
+                          [0, math.cos(theta), -math.sin(theta)],
+                          [0, math.sin(theta), math.cos(theta)]])
+
+    def rot_y(self, theta):
+        return np.matrix([[math.cos(theta), 0, math.sin(theta)],
+                          [0, 1, 0],
+                          [-math.sin(theta), 0, math.cos(theta)]])
+
+    def rot_z(self, theta):
+        return np.matrix([[math.cos(theta), -math.sin(theta), 0],
+                          [math.sin(theta), math.cos(theta), 0],
+                          [0, 0, 1]])
 
     def semi_circle(self, vertices, radius) -> list[tuple]:
         """calculate semi circle vertices"""

@@ -1,6 +1,8 @@
 autopep8==1.7.0
 dearpygui==1.6.2
 numpy==1.23.3
+numpy-stl==2.17.1
 pycodestyle==2.9.1
+python-utils==3.3.3
 scipy==1.9.1
 toml==0.10.2
