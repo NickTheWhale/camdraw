@@ -53,7 +53,6 @@ class EditorPlot:
                 dpg.add_button(label='Add Circle', callback=self.add_circle)
                 dpg.add_button(label='Save', callback=self.on_save)
                 dpg.add_button(label='Compute Cam', callback=self.compute_cam)
-                dpg.add_button(label='Test atan', callback=self.test_atan)
 
         with dpg.item_handler_registry(tag='editor_plot_handler'):
             dpg.add_item_clicked_handler(dpg.mvMouseButton_Left, callback=self.on_left_click)
@@ -239,6 +238,8 @@ class EditorPlot:
                 y_circle + ((y_displacement * y_circle / radius)),
                 z_circle + ((y_displacement * z_circle / radius))
             )
+            
+            
 
             vertices.append(V)
             index_t += 1
@@ -272,16 +273,6 @@ class EditorPlot:
             normal = previous_point - P0
             N = normal / np.linalg.norm(normal)
         
-            rx, ry, rz = self.euler(P0)
-    
-            PR = self.rot(P0, rx, ry, rz)
-
-            dpg.draw_circle(
-                center=PR,
-                radius=3,
-                parent='3d_cam_node',
-                color=(255, 255, 255)
-            )
 
             dpg.draw_circle(
                 center=P0,
@@ -310,58 +301,8 @@ class EditorPlot:
 
         print('done')
 
-    def euler(self, v):
-        x = v[0][0]
-        y = v[1][0]
-        z = v[2][0]
-
-        rx = self.atan(y, x)
-        ry = self.atan(x, z)
-        rz = self.atan(y, z)
-
-        return rx, ry, rz
     
-    def test_atan(self):
-        for i in range(360):
-            theta = i * np.pi / 180
-            print(theta, self.atan(np.cos(theta), np.sin(theta)))
-            
-    
-    def atan(self, x, y):
-        if x >= 0 and y >= 0:
-            # q1
-            theta = np.arctan(y/x)
-        elif x < 0 and y >= 0:
-            # q2
-            theta = np.arctan(y/x) + np.pi
-        elif x < 0 and y < 0:
-            # q3
-            theta = np.arctan(y/x) + np.pi
-        else:
-            # q4
-            theta = np.arctan(y/x) + np.pi * 2
-            
-        return theta
-        
 
-    def rot(self, v, x, y, z):
-        R = self.rot_z(z) * self.rot_y(y) * self.rot_x(x)
-        return R * v
-
-    def rot_x(self, theta):
-        return np.matrix([[1, 0, 0],
-                          [0, math.cos(theta), -math.sin(theta)],
-                          [0, math.sin(theta), math.cos(theta)]])
-
-    def rot_y(self, theta):
-        return np.matrix([[math.cos(theta), 0, math.sin(theta)],
-                          [0, 1, 0],
-                          [-math.sin(theta), 0, math.cos(theta)]])
-
-    def rot_z(self, theta):
-        return np.matrix([[math.cos(theta), -math.sin(theta), 0],
-                          [math.sin(theta), math.cos(theta), 0],
-                          [0, 0, 1]])
 
     def semi_circle(self, vertices, radius) -> list[tuple]:
         """calculate semi circle vertices"""
