@@ -32,7 +32,7 @@ while dpg.is_dearpygui_running():
                     editor.dirty = False
 
         if viewer.rotating:
-            viewer.rotate(0.35)
+            viewer.rotate(0.20)
 
     except Exception as e:
         print(e)
